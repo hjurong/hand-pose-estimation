@@ -1,13 +1,13 @@
 # hand-pose-estimation
 hand pose estimation system based on [Qian et al., 2014]
 
-**********************************************************
-DEPENDENCIES:
+#DEPENDENCIES:
 1. OpenCV
-2. Armadillo
-3. OpenGL
-4. g++ (MinGW) & OpenMP
-5. Python (Optional but recommended)
-**********************************************************
+2. Armadillo (with OpenBLAS)
+3. g++ 4.8.0 (MinGW)
+4. OpenGL
 
-\arrow
+#data
+The data set can be found at: http://research.microsoft.com/en-us/um/people/yichenw/handtracking/index.html. 
+
+Subject1 data is used in our system.
