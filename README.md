@@ -7,7 +7,7 @@ hand pose estimation system based on [Qian et al., 2014]
 3. g++ 4.8.0 (MinGW)
 4. OpenGL
 
-#data
+#DATA:
 The data set can be found at: http://research.microsoft.com/en-us/um/people/yichenw/handtracking/index.html. 
 
 Subject1 data is used in our system.
