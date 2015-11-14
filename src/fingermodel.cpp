@@ -20,29 +20,6 @@ fingermodel::fingermodel() {
 }
 
 
-//fingermodel::fingermodel(vec Thetas, vec finger_geo, vec global_pos,
-//						 vec global_trans, float dis2gpos,
-//						 vec numSpheres) {
-//	// initialise joint_positions and spheres_positions to zeros-array
-//	spacing = dis2gpos; // needs to be set before calling set_transform_mat()
-//	joint_pos.fill(0.0);
-//
-//	// call setter functions
-//	setTheta(Thetas);
-//	set_f_geometry(finger_geo);
-//	set_g_pos(global_pos);
-//
-//	// also sets the size of mat-->spheres_pos
-//	// and vec --> sphere_radius
-//	set_num_spheres(numSpheres);
-//	set_gb_trans(global_trans);
-//
-//	// once the parames (i.e. theta, f_geometry and g_pos) are initialised
-//	// generate the appropriate transformation matrices
-//	set_transform_mat(true); // set_all = true
-//
-//}
-
 void fingermodel::init(double tCMC, vec finger_geo, float dis2gpos,
 					   vec numSpheres) {
 	// initialise joint_positions and spheres_positions to zeros-array
@@ -234,50 +211,6 @@ private functions
 double fingermodel::deg2rad(double angle_deg) {
 	return (angle_deg/180.0*PI);
 }
-
-// /*
-// operations on fingermodel instance
-// */
-// fingermodel& fingermodel::transform() {
-// //	cout << T01 << T12 << endl;
-// 	mat::fixed<4,4> T123 = T12 * T23; // T12 and T23 combine to give the next ptn
-// 	mat::fixed<4,4> T_mat[4] = {T01, T123, T34, T45};
-
-// 	mat::fixed<4,4> current_pos;
-// 	current_pos = T00*Tgb;
-
-// 	vec::fixed<4> temp0, temp1;
-
-// 	int i, count = 4;
-// 	for (i = 0; i < count; ++i)
-// 	{
-// 		/* code */
-// //		// debug print
-// //		cout << T_mat[i] << endl;
-// //		current_pos.print("current pos: ");
-// //		temp0.print("temp: ");
-
-// 		if (i == 1) {
-// 			/* code */
-// 			mat::fixed<4,4> base_ptn = current_pos * T10;
-// 			temp1 = base_ptn.col(3);
-// 			joint_pos.row(0) = temp1(span(0,2)).t();
-// 		}
-
-// 		current_pos = current_pos * T_mat[i]; // apply transformation
-
-// 		// extract the last column, which contains current position of joint
-// 		// in homogeneous coordinates
-// 		// only first 3 elements are appended to rows of joint_pos
-// 		temp0 = current_pos.col(3);
-// 		joint_pos.row(i+1) = temp0(span(0,2)).t(); // update joint_pos
-
-// 	}
-
-// //	cout << joint_pos << endl;
-
-// 	return (*this);
-// }
 
 
 void fingermodel::buildSpheres(mat &joints, mat &spheres_pos) {

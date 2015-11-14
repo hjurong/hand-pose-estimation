@@ -12,7 +12,6 @@
 using namespace arma;
 using namespace std;
 
-
 static int last_x, last_y;
 static int currentButton;
 static float viewing_quaternion[4] = {1,0,0,0};

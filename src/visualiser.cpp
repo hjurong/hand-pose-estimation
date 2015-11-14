@@ -30,7 +30,7 @@ int num_p = 32;
 int maxiter = 80;
 int currentFrame = 0;
 
-bool paused = true;
+bool paused = false;
 
 GLdouble viewer[] = {0.0, 0.0, 20.0};
 
@@ -426,8 +426,10 @@ void gl_visualise() {
 	vec hgeo(20), tbnum(4), fgnum(4), spc(5), hcmc(5), hrad(48);
 	tbnum << 2 << 2 << 2 << 2 << endr;
 	fgnum << 4 << 2 << 2 << 2 << endr;
-	spc << -1.86 << -1.86 << 0 << 1.91 << 3.84 << endr; // digit spacing
-	hcmc << 150 << 107.5 << 89.8 << 76.5 << 59.6 << endr; // cmc angles
+	spc   << -1.86  << -1.86  << 0 	  << 1.91 << 3.84 << endr; // digit spacing
+	hcmc  << 150 	<< 107.5  << 89.8 << 76.5 << 59.6 << endr; // cmc angles
+
+	// initial pose
 	x0 << 0 << -10 << -40 << 0 << 3 << 32 << 6 << 9 << 8 << 9 << 3 << 9
 	   << 9 << 6 << 1  << 9  << 8 << 7 << 4 << 8 << 7 << 6 << 2
 	   << 7 << 7 << 7  << endr; // initial pose
@@ -572,4 +574,5 @@ void gl_visualise() {
 //    glutTimerFunc(0, timer, 0);     // First timer call immediately [NEW]
     glutIdleFunc(update_frame);
     glutMainLoop();                 // Enter the infinite event-processing loop
+
 }

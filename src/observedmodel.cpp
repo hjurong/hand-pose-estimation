@@ -20,7 +20,7 @@ observedmodel::observedmodel() {
 	 *
 	 * initialise the directories where the data reside
 	 * */
-	string home = "C:/Users/juron/Documents/iWork/U-4/ENGN4200/";
+	string home = "../";
 	string pdir = "handModelling/Release_2014_5_28/Subject1/";
 
 	path = home + pdir;
@@ -231,7 +231,6 @@ void observedmodel::depth_to_ptncloud(mat &ptncloud) {
 		ptncloud = ptncloud.rows(sample_idx);
 
 //		ptncloud = join_cols(ptncloud, conptns);
-
 //		ptncloud = conptns;
 //		ptncloud.save("dptncloud.dat", raw_ascii);
 	}

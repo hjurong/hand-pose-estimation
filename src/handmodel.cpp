@@ -219,66 +219,6 @@ vec* handmodel::get_radii() {
 	return (&this->spheres_radii);
 }
 
-//handmodel& handmodel::update_hand() {
-//	/*
-//	 * apply transformations to each finger/thumb
-//	 * */
-//
-//	thumb.transform();
-//	index.transform();
-//	middle.transform();
-//	ring.transform();
-//	little.transform();
-//
-//	this->joint_pos.rows(0,4) = thumb.get_joint_pos();
-//	this->joint_pos.rows(5,9) = index.get_joint_pos();
-//	this->joint_pos.rows(10,14) = middle.get_joint_pos();
-//	this->joint_pos.rows(15,19) = ring.get_joint_pos();
-//	this->joint_pos.rows(20,24) = little.get_joint_pos();
-//
-//	return (*this);
-//}
-//
-//handmodel& handmodel::build_spheres() {
-//
-//	thumb.buildSpheres();
-//	index.buildSpheres();
-//	middle.buildSpheres();
-//	ring.buildSpheres();
-//	little.buildSpheres();
-//
-//	int numtb = (int)sum(this->tb_num_spheres);
-//	int numfg = (int)sum(this->fg_num_shperes);
-//
-//	int start[5], end[5];
-//
-//	for (int i = 0; i < 5; ++i) {
-//		if (i==0) {
-//			start[i] = 0;
-//			end[i] = numtb-1;
-//		}
-//		else {
-//			start[i] = (i-1)*numfg+numtb;
-//			end[i] = i*numfg+numtb-1;
-//		}
-//	}
-//
-//	this->spheres_pos.rows(start[0], end[0]) = thumb.get_spheres_pos();
-//	this->spheres_pos.rows(start[1], end[1]) = index.get_spheres_pos();
-//	this->spheres_pos.rows(start[2], end[2]) = middle.get_spheres_pos();
-//	this->spheres_pos.rows(start[3], end[3]) = ring.get_spheres_pos();
-//	this->spheres_pos.rows(start[4], end[4]) = little.get_spheres_pos();
-//
-////	this->spheres_radii.rows(start[0], end[0]) = thumb.get_sphere_radius();
-////	this->spheres_radii.rows(start[1], end[1]) = index.get_sphere_radius();
-////	this->spheres_radii.rows(start[2], end[2]) = middle.get_sphere_radius();
-////	this->spheres_radii.rows(start[3], end[3]) = ring.get_sphere_radius();
-////	this->spheres_radii.rows(start[4], end[4]) = little.get_sphere_radius();
-//
-//
-//	return (*this);
-//}
-
 
 void handmodel::build_hand_model(vec &h_theta, mat &sphere_centres) {
 	/*

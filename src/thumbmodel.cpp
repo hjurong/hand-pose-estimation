@@ -17,25 +17,6 @@ thumbmodel::thumbmodel() {
 }
 
 
-//thumbmodel::thumbmodel(vec Thetas, vec tb_geo, vec global_pos, vec global_trans,
-//					   float dis2gpos, vec numSpheres) {
-//	spacing = dis2gpos;
-//	joint_pos.fill(0.0);
-//
-//	// call setters and check inputs
-//	setTheta(Thetas);
-//	set_tb_geometry(tb_geo);
-//	set_g_pos(global_pos);
-//
-//	// setting num_spheres also initialise mat-->spheres_pos & vec-->sphere_radius
-//	set_num_spheres(numSpheres);
-//	set_gb_trans(global_trans); // global rotational transforms
-//
-//	// initialise ALL (i.e. set_all==true) transformation matrices
-//	set_transform_mat(true);
-//
-//}
-
 void thumbmodel::init(double tCMC, vec tb_geo, float dis2gpos,
 					  vec numSpheres) {
 

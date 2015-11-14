@@ -14,7 +14,10 @@ using namespace arma;
 using namespace std;
 
 costfunc::costfunc(handmodel *handM, observedmodel *observed) {
-
+	/*
+	 * takes the 48 spheres hand model and the oboverved model as
+	 * input can compute the associated cost
+	 */
 	this->hand = handM;
 	this->observation = observed;
 	// set_dist_transform(); // set the inverted depthmap
@@ -34,15 +37,6 @@ double costfunc::cal_cost2(vec &theta, uvec &matchId, bool compute_corr,
 	 *
 	 * */
 
-
-
-//  // pointer test //////////////////////////////////////////////////
-//  cout << hand << "hand addr, 2" << endl;
-//  vec oldspacing = this->hand->get_spacing();
-//  cout << "old spacing: " << oldspacing << endl;
-//  oldspacing *= 2;
-//  this->hand->set_spacing(oldspacing, false);
-//  //////////////////////////////////////////////////////////////////
 
 	mat::fixed<48,3> spheresM;
 	this->hand->build_hand_model(theta, spheresM);
