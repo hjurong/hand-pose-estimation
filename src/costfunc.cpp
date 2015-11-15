@@ -15,18 +15,28 @@ using namespace std;
 
 costfunc::costfunc(handmodel *handM, observedmodel *observed) {
 	/*
-	 * takes the 48 spheres hand model and the oboverved model as
-	 * input can compute the associated cost
+	 * takes the 48 spheres hand model and the observed model as
+	 * input and computes the associated cost
+	 *
+	 * i.e. the cost function is given by:
+	 * E(M, O) = 3D alignment penalty + 2D projected depth penalty
+	 * 								  + finger spheres collision penalty
 	 */
+
+	// set pointers to hand model and observed model
 	this->hand = handM;
 	this->observation = observed;
-	// set_dist_transform(); // set the inverted depthmap
 }
 
 double costfunc::cal_cost2(vec &theta, uvec &matchId, bool compute_corr,
 						   bool debug) {
 	/*
-	 * bool calall, double &term1, double &term2, double &term3
+	 * theta: 	26-dim arma vector representing the joint angles
+	 * matchId: unsigned int arma vector; a container for holding the correspondences
+	 * 			between the closest spheres to each point in the observed model
+	 * compute_corr: if TRUE --> recompute correspondecnes
+	 *
+	 *
 	 * calculate the new cost associated with the new theta;
 	 *
 	 * firstly, need to update this->hand with the new theta (include transform and
@@ -77,8 +87,8 @@ double costfunc::cal_cost2(vec &theta, uvec &matchId, bool compute_corr,
 
 
 double costfunc::cal_cost(vec &theta) {
-	/*
-	 * bool calall, double &term1, double &term2, double &term3
+	/* theta: 	26-dim arma vector representing the joint angles
+	 *
 	 * calculate the new cost associated with the new theta;
 	 *
 	 * firstly, need to update this->hand with the new theta (include transform and
@@ -89,35 +99,30 @@ double costfunc::cal_cost(vec &theta) {
 	 *
 	 * */
 
-		mat::fixed<48,3> spheresM;
-		this->hand->build_hand_model(theta, spheresM);
+	mat::fixed<48,3> spheresM;
+	this->hand->build_hand_model(theta, spheresM); // build spheres hand model
+
+	// must compute point-sphere correspondence first before
+	// computing alignment cost
+	uvec matchId;
+	compute_correspondences(*(this->observation->get_ptncloud()),
+							spheresM, matchId);
+
+	double align_cost = align_models(*(this->hand->get_radii()),
+									 spheresM,
+									 *(this->observation->get_ptncloud()),
+									 matchId);
+
+	double depth_cost = depth_penalty(*(this->observation->get_camera_mat()),
+									  *(this->observation->get_depthmap()),
+									  spheresM,
+									  *(this->observation->get_disttran()),
+									  this->observation->get_img_scale());
+
+	double total_cost = align_cost + depth_cost; // + colli_cost;
 
 
-		// must compute point-sphere correspondence first before
-		// computing alignment cost
-		uvec matchId;
-		compute_correspondences(*(this->observation->get_ptncloud()),
-								spheresM, matchId);
-
-		double align_cost = align_models(*(this->hand->get_radii()),
-										 spheresM,
-										 *(this->observation->get_ptncloud()),
-										 matchId);
-
-		double depth_cost = depth_penalty(*(this->observation->get_camera_mat()),
-										  *(this->observation->get_depthmap()),
-										  spheresM,
-										  *(this->observation->get_disttran()),
-										  this->observation->get_img_scale());
-
-//		double depth_cost = depthMatch_penalty(spheresM);
-
-//		double colli_cost = self_collision_penalty(spheresM, *(this->hand->get_radii()));
-
-		double total_cost = align_cost + depth_cost; // + colli_cost;
-
-
-		return (total_cost);
+	return (total_cost);
 
 }
 
@@ -139,14 +144,8 @@ double costfunc::self_collision_penalty(mat &spheresM, vec &spheresR) {
 	 *
 	 * */
 
-//  // pointer test //////////////////////////////////////////////////
-//  cout << hand << " hand addr" << endl;
-//  vec newspacing = this->hand->get_spacing();
-//  cout << "new spacing: " << newspacing << endl;
-//  //////////////////////////////////////////////////////////////////
-
-	mat::fixed<6,3> tbs, ixs, mds, rgs, lts;
-	vec::fixed<6> tbr, ixr, mdr, rgr, ltr;
+	mat::fixed<6,3> tbs, ixs, mds, rgs, lts; // spheres coordinates; (x,y,z)
+	vec::fixed<6> tbr, ixr, mdr, rgr, ltr; // spheres radii
 
 	tbs = spheresM.rows(2,7);
 	ixs = spheresM.rows(12,17);
@@ -167,7 +166,6 @@ double costfunc::self_collision_penalty(mat &spheresM, vec &spheresR) {
 	// loop 4 times are there are four pairs of digits to compare
 	for (int i=0; i<4; i++) {
 
-
 		mat smat1 = *s_array[i];
 
 		smat1 = repmat(smat1.t(), 6, 1);
@@ -176,7 +174,7 @@ double costfunc::self_collision_penalty(mat &spheresM, vec &spheresR) {
 
 		mat smat2 = *s_array[i+1];
 		smat2 = repmat(smat2, 6, 1);
-//
+
 		vec rvec1 = *r_array[i];
 		mat tempr = repmat(rvec1.t(), 6, 1);
 		tempr.reshape(36, 1); // 36 rows 1 column
@@ -199,6 +197,13 @@ double costfunc::self_collision_penalty(mat &spheresM, vec &spheresR) {
 }
 
 double costfunc::pairwise_collision(mat &fg1, mat &fg2, vec &rd1, vec &rd2) {
+
+	/*
+	 * compute self collision penalty for two adjacent spheres between
+	 * neighbouring fingers only
+	 *
+	 */
+
 	int nspheres = fg1.n_rows;
 	double pairwise_penalty = 0.0;
 
@@ -241,7 +246,7 @@ double costfunc::depth_penalty(mat &cam_mat, mat &depthmp, mat &spheres,
 
 	vec radii = *(this->hand->get_radii());
 
-	spheres.cols(1,2) *= -1;
+	spheres.cols(1,2) *= -1; // reset depth
 
 	mat projection = cam_mat * spheres.t(); // (3x3) * (3xnspheres)
 	projection = projection / repmat(projection.row(2), 3, 1); // to homogeneous
@@ -258,7 +263,8 @@ double costfunc::depth_penalty(mat &cam_mat, mat &depthmp, mat &spheres,
 
 		/*
 		 * firstly check if the projection of the sphere centers lie inside
-		 * the depthmap (i.e. inside 320x240 as described by xbounded and ybounded)
+		 * the depthmap
+		 * (i.e. inside 320x240 as described by xbounded and ybounded)
 		 *
 		 * if so, calculate the cost accordingly
 		 *
@@ -299,21 +305,31 @@ double costfunc::depth_penalty(mat &cam_mat, mat &depthmp, mat &spheres,
 
 void costfunc::compute_correspondences(mat &ptns, mat &sphM, uvec &matchId) {
 
+	/* ptns: reference to observed points
+	 * sphM: reference to spheres model
+	 * matchId:returned vector containing the matchId
+	 *
+	 * Match every point in the observed model to the closest sphere of
+	 * the hand model
+	 *
+	 * This uses the BFMatcher provided by OpenCV
+	 *
+	 * ==> need to firstly convert arma::mat to cv::mat
+	 */
+
+	// start conversion from arma::mat --> cv::mat
 	fmat spheresM = conv_to<fmat>::from(sphM);
 	fmat ptncloud = conv_to<fmat>::from(ptns);
-
-//  cout << spheresM.n_rows << "-spr-" << spheresM.n_cols << endl;
-//  cout << ptncloud.n_rows << "-ptn-" << ptncloud.n_cols << endl;
 
 	cv::Mat cvspheresM(spheresM.n_cols, spheresM.n_rows, CV_32F, spheresM.memptr());
 	cv::Mat cvptncloud(ptncloud.n_cols, ptncloud.n_rows, CV_32F, ptncloud.memptr());
 
-	cvspheresM = cvspheresM.t(); // unit = cm
-	cvptncloud = cvptncloud.t(); // converted to cm from mm
+	// cv::mat is row-major while arma::mat is col-major
+	cvspheresM = cvspheresM.t();
+	cvptncloud = cvptncloud.t();
 
 	cv::BFMatcher matcher(cv::NORM_L2); // initialise a brute-force matcher
 	std::vector<cv::DMatch> matches; // initialise a container for the matches
-
 
 	matcher.match(cvptncloud, cvspheresM, matches); // perform matching
 
@@ -367,11 +383,22 @@ uvec costfunc::get_matchIdx() const {
 
 double costfunc::bincomp_penalty(mat &spheres) {
 
-	mat K = *(this->observation->get_camera_mat());
+	/* input hand model spheres
+	 * output sum of binary matching cost
+	 *
+	 * a new cost term used for testing
+	 *
+	 * i.e. this computes the binary error resulted from matching the observed
+	 * depth map and the projected depth from the hand model
+	 *
+	 */
 
-	mat cens = spheres.t();
-	cens.rows(1,2) *= -1;
+	mat K = *(this->observation->get_camera_mat()); // camera matrix
 
+	mat cens = spheres.t(); // spheres centres in (x,y,z)
+	cens.rows(1,2) *= -1; // reset depth
+
+	// project sphere centres onto 2D
 	mat projection = K * cens;
 	mat cprojected = projection.rows(0,1) / repmat(projection.row(2),2,1);
 
@@ -381,12 +408,9 @@ double costfunc::bincomp_penalty(mat &spheres) {
 	int imW = this->observation->get_imgW();
 	int imH = this->observation->get_imgH();
 
-//	mat invdepth = this->observation->get_depth();
-//	cv::Mat out_img(invdepth.n_cols, invdepth.n_rows, CV_64F, invdepth.memptr());
-//	out_img = out_img.t();
+	cv::Mat out_img = cv::Mat::zeros(imW,imH,CV_64F); // empty projected depth map
 
-	cv::Mat out_img = cv::Mat::zeros(imW,imH,CV_64F);
-
+	// draw projected depth map
 	int nptns = cprojected.n_cols;
 	for (int i=0; i<nptns; i++) {
 
@@ -398,7 +422,7 @@ double costfunc::bincomp_penalty(mat &spheres) {
 		cv::circle(out_img, cv::Point(cx,cy), rad, cv::Scalar(dep),-1);
 	}
 
-
+	// compute binary error
 	mat dep(out_img.ptr<double>(), out_img.cols, out_img.rows);
 	dep = dep.t();
 	dep.elem( find(dep) ).ones();
@@ -411,7 +435,12 @@ double costfunc::bincomp_penalty(mat &spheres) {
 	return (c);
 }
 
+
 cv::Mat costfunc::depthMatch_penalty(mat &spheres) {
+	/* input: hand model spheres
+	 * output: the depth map projected from spheres
+	 *
+	 */
 
 	mat K = *(this->observation->get_camera_mat());
 
@@ -424,15 +453,9 @@ cv::Mat costfunc::depthMatch_penalty(mat &spheres) {
 	vec R = *(this->hand->get_radii());
 	R /= this->observation->get_img_scale();
 
-
-
 	mat invdepth = this->observation->get_depth();
 	cv::Mat out_img(invdepth.n_cols, invdepth.n_rows, CV_64F, invdepth.memptr());
 	out_img = out_img.t();
-
-//	int imW = this->observation->get_imgW();
-//	int imH = this->observation->get_imgH();
-//	cv::Mat out_img = cv::Mat::zeros(imW,imH,CV_64F);
 
 	int nptns = cprojected.n_cols;
 	for (int i=0; i<nptns; i++) {
@@ -445,34 +468,29 @@ cv::Mat costfunc::depthMatch_penalty(mat &spheres) {
 		cv::circle(out_img, cv::Point(cx,cy), rad, cv::Scalar(dep,dep,dep),2);
 	}
 
-//	cv::namedWindow("disttrans", cv::WINDOW_AUTOSIZE ); // Create a window for display.
-//	cv::imshow("disttrans", out_img); // Show our image inside it.
-//	cv::waitKey(0);
-
-//	mat dep(out_img.ptr<double>(), out_img.cols, out_img.rows);
-//	dep = dep.t();
-
-////	dep.save("projected_model.dat", raw_ascii);
-//
-//	mat depth_diff = dep - (this->observation->get_depth());
-//
-//	double cost = sum(sum(abs(depth_diff)));
-
-
 	return (out_img);
 
 }
 
 
 double costfunc::gnd_truth_err(mat &gnd_truth, int frame) {
+	/* input: ground_truth matrix containing the ground truth joints
+	 * 		  for all test frames
+	 * input: frame (int) is the current frame
+	 * output: the sum of joint distances between our optimised model and
+	 * 		   the ground truth for the wrist and the five finger tips
+	 *
+	 * compute joint error between ground truth and our optimised model
+	 */
 
+	// extract ground truth joints
 	mat gndTr_joints = gnd_truth.row(frame);
-	gndTr_joints.reshape(3,21);
+	gndTr_joints.reshape(3,21); // in cm
 
 	// assume that the joints have already been computed
 	// through "build_hand_model(.)"
 	mat hand_joints = this->hand->hand_joints * 10.0; // convert back to mm from cm
-	hand_joints.cols(1,2) *= -1;
+	hand_joints.cols(1,2) *= -1; // reset depth
 
 	mat diff = gndTr_joints.t() - hand_joints;
 
@@ -483,13 +501,7 @@ double costfunc::gnd_truth_err(mat &gnd_truth, int frame) {
 	uvec sjoint_id(6);
 	sjoint_id << 0 << 4 << 8 << 12 << 16 << 20  << endr;
 
-//	cout << diff.rows(sjoint_id) << endl;
-//	cout << hand_joints.rows(sjoint_id) << endl;
-//	cout << gndTr_joints.cols(sjoint_id).t() << endl;
-//	cout << dist(sjoint_id) << endl;
-
 	double c = sum(dist(sjoint_id));
-
 
 	return (c);
 }

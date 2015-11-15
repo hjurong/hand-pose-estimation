@@ -15,7 +15,7 @@ public:
 	void set_spacing(vec &h_spacing);
 	void set_hand_rad(vec &rad);
 	void set_num_spheres(vec &tb_spheres, vec &fg_spheres);
-	void gl_visualise();
+	void build_hand_model(vec &h_theta, mat &sphere_centres);
 
 	vec get_hand_geo() const;
 	vec get_hand_CMC() const;
@@ -28,8 +28,6 @@ public:
 
 	handmodel & update_hand();
 	handmodel & build_spheres();
-
-	void build_hand_model(vec &h_theta, mat &sphere_centres);
 
 	mat hand_joints;
 
@@ -45,7 +43,6 @@ private:
 	vec::fixed<4> fg_num_shperes;
 
 	vec spheres_radii;
-
 
 	void process_theta(vec &hand_theta, vec the_array[], vec &g_pos, vec &gb_trans);
 	void process_geo(vec geo_array[]);

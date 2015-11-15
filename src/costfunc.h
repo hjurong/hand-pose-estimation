@@ -16,7 +16,7 @@ private:
 	handmodel *hand;
 	observedmodel *observation;
 
-	uvec matchIdx;
+	uvec matchIdx; // unused
 
 	double pairwise_collision(mat &fg1, mat &fg2, vec &rd1, vec &rd2);
 
@@ -37,8 +37,6 @@ public:
 	cv::Mat depthMatch_penalty(mat &spheres);
 
 	void compute_correspondences(mat &ptns, mat &sphM, uvec &matchId);
-
-
 
 	uvec get_matchIdx() const;
 

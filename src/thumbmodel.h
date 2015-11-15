@@ -7,10 +7,8 @@ using namespace arma;
 
 class thumbmodel {
 public:
-	thumbmodel();
-//	thumbmodel(vec Thetas, vec tb_geo, vec global_pos, vec global_trans,
-//			   float dis2gpos, vec numSpheres);
 
+	thumbmodel();
 
 	vec get_tb_geometry() const;
 	vec get_num_spheres() const;
@@ -26,10 +24,6 @@ public:
 						   mat &T34, mat &T00, mat &Tgb,
 						   vec &tb_geometry, vec &gb_trans, 
 						   vec &g_pos, vec &theta);
-
-
-	// thumbmodel & transform();
-	// thumbmodel & buildSpheres();
 
 	void buildSpheres(mat &joints, mat &sphere_centres);
 	void build_thumb_model(vec &tb_theta, vec &gb_trans, vec &g_pos,
@@ -47,7 +41,6 @@ private:
 	float spacing;
 	double CMC;
 	bool setCMCTrans;
-
 
 };
 

@@ -10,12 +10,15 @@ using namespace std;
 class observedmodel {
 
 private:
-	string path, filename;
+
+	string path;
+	string filename;
 
 	mat depthmap;
 	mat pointcld;
 	mat disttran;
 
+	vec::fixed<2> img_center;
 	mat::fixed<3,3> camera_calibration;
 
 	int imgW;
@@ -24,15 +27,14 @@ private:
 	bool downsample;
 	double focal_len;
 	double scale;
-	vec::fixed<2> img_center;
 
 
 public:
+
 	observedmodel();
 
 	void init_observation(string dpath, string dfname, bool mm_to_cm,
 						  int imW, int imH, double foclen, bool downsample);
-
 	void get_observed();
 	void show_depthmap();
 	void visualise_ptncloud();
@@ -53,14 +55,13 @@ public:
 
 	mat get_cam_mat() const;
 	mat get_depth() const;
-
 	vec get_img_center() const;
+
 	double get_img_scale() const;
 	double get_focal_len() const;
 	int get_imgH() const;
 	int get_imgW() const;
 
-	// observedmodel & update(bool reload=false);
 	observedmodel & next_frame(string next);
 
 	void invert_depthmap(mat &depthmp, bool display=false);

@@ -114,9 +114,6 @@ void test_full() {
 	int numframes = 10;
 	vec fitness = zeros<vec>(numframes); // container for fitness
 
-//	cv::namedWindow("disttrans", cv::WINDOW_AUTOSIZE ); // Create a window for display.
-
-
 	for (int frame=0; frame < numframes; frame++) {
 		stringstream ss;
 		ss << setw(6) << setfill('0') << frame;
@@ -136,23 +133,30 @@ void test_full() {
 		string label = "frame" + next_frame_num + "-cost: ";
 		cout << label << c << endl;
 
-
 		fitness(frame) = c; // store fitness for current frame
 
 		x0 = bestp;
 
 	}
 
+	// uncomment to output fitness data
 //	fitness.save("fitness_error.dat", raw_ascii);
 
 
 }
 
 void test_PSO(costfunc &optfunc) {
+	/*
+	 * test the optimiser
+	 *
+	 * can change the initial pose vector and upper/lower bound parameters
+	 * to test the effect
+	 */
 	vec x0(26);
 	x0 << 0 <<-10<< -40<< 0 << 3 << 32<< 6 << 9 << 8 << 9 << 3 << 9
 	   << 9 << 6 << 1  << 9 << 8 << 7 << 4 << 8 << 7 << 6 << 2
 	   << 7 << 7 << 7  << endr;
+
 	vec temp(4);
 	temp << 15 << 90 << 110 << 90 << endr;
 	vec ub = zeros<vec>(26);
@@ -195,8 +199,6 @@ void test_PSO(costfunc &optfunc) {
 
 	vec bestp = zeros<vec>(26);
 
-//	optimiser.pso_optimise(optfunc, x0, num_p, bestp);
-
 	optimiser.pso_evolve(optfunc, x0, num_p, bestp);
 
 	cout << x0 << endl;
@@ -205,7 +207,6 @@ void test_PSO(costfunc &optfunc) {
 	cout << bestp << endl;
 	double c = optfunc.cal_cost(bestp);
 	cout << c << endl;
-
 
 }
 
@@ -237,7 +238,6 @@ void test_observedmodel(observedmodel &observation, bool downsample) {
 
 	observation.init_observation(full, objt, conv_to_cm, imgW, imgH,
 								 focal, downsample); // already calls depth_to_ptncloud
-
 }
 
 
@@ -263,7 +263,7 @@ handmodel test_handmodel() {
 		  << 9     << 6 	<< 1    << 9 << 8 << 7  << 4 << 8 << 7 << 6 << 2
 		  << 7 	   << 7 	<< 7    << endr;
 
-	string path = "misc";
+	string path  = "misc";
 	string file1 = path + "/hgeo.dat"; // unit = mm
 	string file2 = path + "/rad.dat";
 	hgeo.load(file1, raw_ascii);
@@ -284,41 +284,34 @@ handmodel test_handmodel() {
 int main() {
 	/* code */
 
-//////////////////////////////////////////////////////////////////
-
 	// set armadillo rng seed and print in scientific format
 	arma_rng::set_seed(10000);
 	cout.precision(15);
 	cout << scientific << endl;
 
+	int test_no = 2;
 
-///////////////////////////////////////////////////////////////////
-// test 1
-///////////////////////////////////////////////////////////////////
-//	observedmodel observation;
-//	test_observedmodel(observation, true); // downsample == true
-//
-//	handmodel hand = test_handmodel();
-//	costfunc optf(&hand, &observation);
-//
-//	cout << "execution time = " << (double)(clock()-start)/CLOCKS_PER_SEC << endl;
+	if (test_no == 0) {
+		observedmodel observation;
+		test_observedmodel(observation, true); // downsample == true
 
+		handmodel hand = test_handmodel();
+		costfunc optf(&hand, &observation);
+	}
 
-///////////////////////////////////////////////////////////////////////
-// test visualiser
-///////////////////////////////////////////////////////////////////////
+	else if (test_no == 1) {
+		test_visualiser();
+	}
 
-//	test_visualiser();
+	else if (test_no == 2) {
+		time_t start = clock();
+		test_full();
+		cout << "execution time = " << (double)(clock()-start)/CLOCKS_PER_SEC << endl;
+	}
 
-
-//////////////////////////////////////////////////////////////////////
-// full test
-//////////////////////////////////////////////////////////////////////
-
-//	time_t start = clock();
-//	test_full();
-//	cout << "execution time = " << (double)(clock()-start)/CLOCKS_PER_SEC << endl;
-
+	else {
+		cout << "invalid arg" << endl;
+	}
 
 	return (0);
 }

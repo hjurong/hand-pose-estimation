@@ -25,7 +25,6 @@ private:
 
 	int maxiter;
 
-//	void clustered_update(int num_clusters);
 	void generate_particles(mat &particles, vec &init_postion,
 							int num_particles, bool allocation=false);
 	void check_constraints(vec &theta, vec &ivelocity);
@@ -53,6 +52,7 @@ private:
 
 
 public:
+
 	PSO();
 	void init_PSO(observedmodel *observed, handmodel & hand, int num_particles);
 	void update_PSO_gen(int generations, int num_descent=10, int num_clusters=2);

@@ -8,6 +8,9 @@ using namespace arma;
 const static double PI = acos(-1);
 
 thumbmodel::thumbmodel() {
+	/*
+	 * set default parameters to zero upon instantiation
+	 */
 	this->spacing = 0.0;
 	this->CMC = 0.0;
 	this->Trf.fill(0.0);
@@ -16,10 +19,11 @@ thumbmodel::thumbmodel() {
 	this->setCMCTrans = true;
 }
 
-
 void thumbmodel::init(double tCMC, vec tb_geo, float dis2gpos,
 					  vec numSpheres) {
-
+	/*
+	 * initialise thumb model parameters
+	 */
 
 	// call setters and check inputs
 	set_spacing(dis2gpos);
@@ -44,9 +48,6 @@ void thumbmodel::set_CMC(double tCMC) {
 	this->setCMCTrans = true;
 }
 
-//void thumbmodel::set_sphere_radius(vec sradius) {
-//	sphere_radius = sradius;
-//}
 
 void thumbmodel::set_num_spheres(vec numSpheres) {
 	if (numSpheres.n_rows != 4) {
@@ -74,8 +75,15 @@ void thumbmodel::set_tb_geometry(vec tb_geo) {
 
 void thumbmodel::set_transform_mat(mat &T01, mat &T12, mat &T23, 
 								   mat &T34, mat &T00, mat &Tgb,
-								   vec &tb_geometry, vec &gb_trans, 
-								   vec &g_pos, vec &theta) {
+								   vec &tb_geometry,
+								   vec &gb_trans,
+								   vec &g_pos,
+								   vec &theta) {
+	/*
+	 * set transformation matrices according to DH convention
+	 *
+	 * refer to fingermodel.cpp for more explanation
+	 */
 	double nCMC, TMC1, TMC2, MCP, IP;
 	nCMC = deg2rad(this->CMC);
 	TMC1 = deg2rad(theta(0));
@@ -84,7 +92,8 @@ void thumbmodel::set_transform_mat(mat &T01, mat &T12, mat &T23,
 	IP   = deg2rad(theta(3));
 
 	double TWS, ANG, ROT; // rotation in z, y, x
-	TWS = deg2rad(gb_trans(0) + 180); // y axis is inverted ==> need to roated z-axis by 180deg
+	// y axis is inverted ==> need to roated z-axis by 180deg
+	TWS = deg2rad(gb_trans(0) + 180);
 	ANG = deg2rad(gb_trans(1));
 	ROT = deg2rad(gb_trans(2));
 
@@ -101,28 +110,24 @@ void thumbmodel::set_transform_mat(mat &T01, mat &T12, mat &T23,
 
 
 	if (this->setCMCTrans) {
-
-		
 		/* code
-		CMC is fixed; thus its transformation does not need to be
-		updated everytime
-		*/
+		 * CMC is fixed; thus its transformation does not need to be
+		 * updated everytime
+		 */
 		this->Trf << cos(nCMC) << -sin(nCMC) << 0 << L0*cos(nCMC) << endr
 			  	  << sin(nCMC) <<  cos(nCMC) << 0 << L0*sin(nCMC) << endr
 				  << 		 0 << 		   0 << 1 << 	    	0 << endr
 			 	  << 		 0 << 	       0 << 0 <<		   	1 << endr;
 
 		/*
-		T10 is the reverse of Trf so that the spheres on the
-		palm can be generated properly
-		trigonomatry is used to enasure that the distance between
-		every two neighbouring spheres == spacing
-		*/
+		 * T10 is the reverse of Trf so that the spheres on the
+		 * palm can be generated properly
+		 * trigonometry is used to ensure that the distance between
+		 * every two neighbouring spheres == spacing
+		 */
 		double a = sqrt(L0*L0+spacing*spacing-2*L0*spacing*cos(nCMC));
 		double beta = asin(sin(nCMC)*spacing/a); // rotation angle
 
-//		cout << a << endl;
-//		cout << beta << endl;
 
 		this->T10 << cos(beta) << -sin(beta) << 0 << -a*cos(beta) << endr
 				  << sin(beta) <<  cos(beta) << 0 << -a*sin(beta) << endr
@@ -134,10 +139,8 @@ void thumbmodel::set_transform_mat(mat &T01, mat &T12, mat &T23,
 
 
 	/*
-	remaing transformations for the rest of the joints are updated every time
-	the DH-param can be determined by looking at:
-	T**(2,1) ~ 0, -1, 1
-	*/
+	 * remaining transformations for the rest of the joints are updated every time
+	 */
 	T01 << cos(TMC1) <<  0 << -sin(TMC1) << 0 << endr
 		<< sin(TMC1) <<  0 <<  cos(TMC1) << 0 << endr
 		<<		   0 << -1 << 		   0 << 0 << endr
@@ -160,16 +163,16 @@ void thumbmodel::set_transform_mat(mat &T01, mat &T12, mat &T23,
 		<< 		 0 << 	     0 << 0 << 		    1 << endr;
 
 	/*
-	global position --> specifies movements in 3D
-	*/
+	 * global position --> specifies movements in 3D
+	 */
 	T00 << 1 << 0 << 0 << ux << endr
 		<< 0 << 1 << 0 << uy << endr
 		<< 0 << 0 << 1 << uz << endr
 		<< 0 << 0 << 0 <<  1 << endr;
 
 	/*
-	global transformation matrix for rotations --> hand rotations in 3D
-	*/
+	 * global transformation matrix for rotations --> hand rotations in 3D
+	 */
 	mat Rx, Ry, Rz; // rotation matrix for each axis
 
 	Rz << cos(TWS) << -sin(TWS) << 0 << 0 << endr
@@ -188,17 +191,6 @@ void thumbmodel::set_transform_mat(mat &T01, mat &T12, mat &T23,
 	   << 0 << 		  0 << 		   0 << 1 << endr;
 
 	Tgb = Rz * Ry * Rx;
-
-//	Tgb << cos(TWS) << -sin(TWS)*cos(JNT) << sin(TWS)*sin(JNT) << 0 << endr
-//		<< sin(TWS) <<  cos(TWS)*cos(JNT) <<-cos(TWS)*sin(JNT) << 0 << endr
-//		<<		   0 << 		 sin(JNT) << 		  cos(JNT) << 0 << endr
-//		<< 		   0 <<  				0 <<	   		     0 << 1 << endr;
-
-//	// debug print
-//	mat::fixed<4,4> test[8] = {Trf, T01, T10, T12, T23, T34, T45, Tgb};
-//	for (int i = 0; i<8; ++i) {
-//		test[i].print("\nMAT: ");
-//	}
 
 }
 
@@ -230,14 +222,14 @@ double thumbmodel::deg2rad(double angle_deg) {
 }
 
 /*
-operations on thumbmodel instances
+operations on thumb model instances
 */
 void thumbmodel::buildSpheres(mat &joint_pos, mat &spheres_pos) {
-
-	// spheres_pos.shape = (num_tb_spheres, 3)
-
-	// number of joints -- including finger tips; 
-	// recall size(joint_pos) == fixed<5,3>
+	/* input:  thumb model joints
+	 * output: thumb model sphere centres
+	 *
+	 * construct thumb model by fitting spheres between every two adjacent joints
+	 */
 	int num_joints = 5; 
 	int numSpheres = 0;
 	int cnt = 0; // counter for current position of sphere_pos
@@ -249,8 +241,8 @@ void thumbmodel::buildSpheres(mat &joint_pos, mat &spheres_pos) {
 
 	for (int i = 0; i < num_joints-1; ++i) {
 		/* code 
-		5 joints ==> 4 segments/parts ==> 4 iterations
-		*/
+		 * 5 joints ==> 4 segments/parts ==> 4 iterations
+		 */
 
 		joint1 = joint_pos.row(i);
 		joint2 = joint_pos.row(i+1);
@@ -260,13 +252,13 @@ void thumbmodel::buildSpheres(mat &joint_pos, mat &spheres_pos) {
 
 		for (int j = 1; j < numSpheres+1; ++j) {
 			/* code
-			num_spheres(vec): specifies the number of spheres
-			in each finger segment
-
-			radii of spheres in one finger segment are equal
-
-			int-j must start at 1 to ensure int-mapping starts at 1
-			*/
+			 * num_spheres(vec): specifies the number of spheres
+			 * in each finger segment
+			 *
+			 * radii of spheres in one finger segment are equal
+			 *
+			 * int-j must start at 1 to ensure int-mapping starts at 1
+			 */
 
 			// apply general midpoint formula to get the next sphere center
 			// add the positions to spheres_pos
@@ -283,7 +275,10 @@ void thumbmodel::buildSpheres(mat &joint_pos, mat &spheres_pos) {
 
 void thumbmodel::build_thumb_model(vec &tb_theta, vec &gb_trans, vec &g_pos,
 						   		   mat &sphere_centres) {
-	//	cout << T01 << T12 << endl;
+	/*
+	 * compute the thumb model joints then fits spheres onto adjacent joints
+	 *
+	 */
 	mat::fixed<4,4> T01, T12, T23, T34, T00, Tgb;
 
 	set_transform_mat(T01, T12, T23, T34, T00, Tgb, this->tb_geometry,
@@ -298,10 +293,6 @@ void thumbmodel::build_thumb_model(vec &tb_theta, vec &gb_trans, vec &g_pos,
 	
 	for (int i = 0; i < 4; ++i) {
 		/* code */
-//		// debug print
-//		cout << T_mat[i] << endl;
-//		current_pos.print("current pos: ");
-//		temp0.print("temp: ");
 
 		if (i == 1) {
 			/* code */
@@ -317,7 +308,7 @@ void thumbmodel::build_thumb_model(vec &tb_theta, vec &gb_trans, vec &g_pos,
 		// in homogeneous coordinates
 		// only first 3 elements are appended to rows of joint_pos
 		vec::fixed<4> temp = current_pos.col(3);
-		joint_pos.row(i+1) = temp.rows(0,2).t(); // temp(span(0,2)).t(); // update joint_pos
+		joint_pos.row(i+1) = temp.rows(0,2).t(); // update joint_pos
 
 	}
 

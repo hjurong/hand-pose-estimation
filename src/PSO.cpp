@@ -24,6 +24,8 @@ PSO::PSO() {
 	 * this class also incoporate different modifications tested on 
 	 * these methods; for example: particle restart/re-randomisation
 	 */
+
+	// default parameters for PSO
 	this->w = 0.7298;
 	this->c1 = 1.49618;
 	this->c2 = 1.49618;
@@ -36,7 +38,9 @@ PSO::PSO() {
 void PSO::set_pso_params(vec &upperbound, vec &lowerbound, vec &std,
 						 double &omega, double &phip, double &phig, int &maxIter,
 						 double &minStep, double &minFunc) {
-
+	/*
+	 * set PSO parameters and change default
+	 */
 	this->theta_min = lowerbound;
 	this->theta_max = upperbound;
 	this->theta_std = std;
@@ -49,24 +53,33 @@ void PSO::set_pso_params(vec &upperbound, vec &lowerbound, vec &std,
 
 }
 
-void PSO::generate_particles(mat &particles, vec &x0, int num_p, bool allocation) {
-	// load the parameters of the base hand;
-	// then apply random perturbation to the model
+void PSO::generate_particles(mat &particles, vec &x0,
+							 int num_p, bool allocation) {
+	/* input: arma::vec x0 = initial pose vector
+	 * output: arma::mat particles = num_p particles
+	 *
+	 * load the parameters of the base hand;
+	 * then apply random perturbation to the model
+	 *
+	 */
 
 	int param_dim = x0.n_rows; // dimension of particle
-	particles = randn<mat>(param_dim, num_p); // every COLUMN is a theta
-//	particles = 2*randu<mat>(param_dim, num_p) - 1; // every COLUMN is a theta
-	mat init_pos = repmat(x0, 1, num_p);
-	mat init_std = repmat(this->theta_std, 1, num_p);
+	particles     = randn<mat>(param_dim, num_p); // every COLUMN is a theta
+	mat init_pos  = repmat(x0, 1, num_p);
+	mat init_std  = repmat(this->theta_std, 1, num_p);
 
-	particles = init_pos + particles % init_std; // % ==> element-wise multiplication
-
+	// % ==> element-wise multiplication
+	particles = init_pos + particles % init_std;
 
 }
 
 void PSO::restart(mat &particles, mat &velocities,
 					mat &pbest, vec &pcosts, vec &x0) {
-
+	/*
+	 * PSO restart --> reset particle positions and their velocities
+	 *
+	 * then generate new particles
+	 */
 	int num_p = particles.n_cols;
 	int p_dim = particles.n_rows;
 
@@ -77,7 +90,6 @@ void PSO::restart(mat &particles, mat &velocities,
 	mat new_hperturb = (randn(p_dim, reinit_part_idx.n_rows)) %
 						repmat(this->theta_std, 1, reinit_part_idx.n_rows);
 
-
 	new_part_pos = new_part_pos + new_hperturb;
 
 	velocities.cols(reinit_part_idx).fill(0.0);
@@ -85,62 +97,41 @@ void PSO::restart(mat &particles, mat &velocities,
 	pcosts.rows(reinit_part_idx).fill(1e20);
 	pbest.cols(reinit_part_idx) = new_part_pos;
 
-
 }
 
 void PSO::randomise(mat &particles, vec &pcost, vec &x0, int &num_p) {
-
+	/*
+	 * inject randomness into the particles;
+	 * refer to literature for more details
+	 *
+	 */
 	int param_dim = particles.n_rows;
 
 	// get the index of sorted cost in ascending order
 	uvec sorted_cost_idx = sort_index(pcost);
 	uvec psel = randi<uvec>(2, distr_param(0, num_p/2-1));
 
-//	pcost.print("cost");
-//	sorted_cost_idx.print("sorted idx");
 
 	int bestc = sorted_cost_idx(0); // psel.at(0); //
 	int start = num_p / 2;
-//	int ninit = start + num_p / 4;
-//	int npert = ninit + 3*num_p / 20;
 	int nslic = num_p - 1;
 
 
 	uvec reinit_idx = sorted_cost_idx.rows(start,nslic);
-	mat submat = randn(param_dim, reinit_idx.n_rows);
-	mat init_pos = repmat(particles.col(bestc), 1, reinit_idx.n_rows);
-//	mat init_pos = repmat(x0, 1, reinit_idx.n_rows);
-	mat init_std = repmat(this->theta_std, 1, reinit_idx.n_rows);
-
-//	particles.print("before");
+	mat submat      = randn(param_dim, reinit_idx.n_rows);
+	mat init_pos 	= repmat(particles.col(bestc), 1, reinit_idx.n_rows);
+	mat init_std 	= repmat(this->theta_std, 1, reinit_idx.n_rows);
 
 	submat = init_pos + submat % (init_std);
 	particles.cols(reinit_idx) = submat;
 
-
-
-//	reinit_idx = sorted_cost_idx.rows(ninit+1,npert);
-//	reinit_idx = sorted_cost_idx.rows(start, ninit);
-//	submat = randn(reinit_idx.n_rows, param_dim);
-//	init_std = repmat(this->theta_std.t(), reinit_idx.n_rows, 1);
-//	particles.rows(reinit_idx) += submat % (init_std);
-
-//	particles.print("after");
-
-//	reinit_idx = sorted_cost_idx.rows(npert+1, nslic);
-////	rowvec bestp = particles.row(bestc);
-////	uvec gpt = linspace<uvec>(0,5,6);
-////	particles.submat(reinit_idx, gpt) = repmat(bestp.subvec(span(0,5)),
-////												reinit_idx.n_rows, 1);
-//	rowvec bestp = particles.row(psel.at(1));
-//	uvec gpt = linspace<uvec>(6,25,20);
-//	particles.submat(reinit_idx, gpt) = repmat(bestp.subvec(span(6,25)),
-//												reinit_idx.n_rows, 1);
-
 }
 
 void PSO::init_velocity(mat &particles, mat &pvelocity, int &num_p) {
-
+	/*
+	 * initialise particle velocities
+	 *
+	 */
 
 	mat min_grid = repmat(this->theta_min.t(), num_p, 1);
 	mat max_grid = repmat(this->theta_max.t(), num_p, 1);
@@ -191,7 +182,10 @@ void PSO::dim_restore(vec &theta_in, vec &theta_out) {
 
 void PSO::cal_grad(vec &theta, uvec &sel, uvec &matchId, costfunc &optfunc,
 				   vec &grad) {
-
+	/*
+	 * compute numerical gradient of costfunc at theta_sel
+	 *
+	 */
 	grad = zeros<vec>(theta.n_rows);
 
 	int len = sel.n_rows;
@@ -220,7 +214,14 @@ void PSO::cal_grad(vec &theta, uvec &sel, uvec &matchId, costfunc &optfunc,
 }
 
 void PSO::refine_init_pose(vec &x0, costfunc &optfunc) {
-
+	/*
+	 * input:  arma:vec x0 = initial pose vector = 26-dim
+	 * input:  reference to cost function for
+	 * output: updated x0
+	 *
+	 * refine the initialisation pose using gradient descent
+	 *
+	 */
 	int len = 2;
 	int start_idx[7] = {0, 3, 6, 10, 14, 18, 22};
 	int end_idx[7] = {2, 5, 9, 13, 17, 21, 25};
@@ -256,7 +257,6 @@ void PSO::refine_init_pose(vec &x0, costfunc &optfunc) {
 
 			vec temp = sqrt(sum(grad % grad, 0));
 			tol = temp(0);
-//			cout << c << "--" << tk << "--" << tol << endl; // debug
 			iter += 1;
 
 		}
@@ -266,9 +266,14 @@ void PSO::refine_init_pose(vec &x0, costfunc &optfunc) {
 }
 
 
-void PSO::NM_simplex(costfunc &optfunc, mat &particles, mat &velocity, vec &pcost) {
-
-	cout << pcost << "--in--" << endl;
+void PSO::NM_simplex(costfunc &optfunc,
+					 mat &particles, mat &velocity, vec &pcost) {
+	/*
+	 * implementation of simplex method
+	 *
+	 * testing shown that this is ineffective
+	 *
+	 */
 
 	double alpha = 1., gamma = 2., p = -0.5, sigma = 0.5;
 	int num_p = particles.n_cols;
@@ -347,12 +352,19 @@ void PSO::NM_simplex(costfunc &optfunc, mat &particles, mat &velocity, vec &pcos
 
 	cout << pcost << endl;
 
-
 }
 
 
 void PSO::check_constraints(vec &theta, vec &ivelocity) {
-    
+    /*
+     * check constraints
+     *
+     * if a particular dimension of a particle exceeds the lower/upper bounds
+     * then reset that dimension to the bound
+     *
+     * and reset velocity
+     *
+     */
     uvec mark1 = find(theta < this->theta_min);
     uvec mark2 = find(theta > this->theta_max);
 
@@ -362,15 +374,15 @@ void PSO::check_constraints(vec &theta, vec &ivelocity) {
     ivelocity(mark1).fill(0.);
     ivelocity(mark2).fill(0.);
 
-//    ivelocity(mark1) *= -0.5;
-//    ivelocity(mark2) *= -0.5;
-
 }
 
 
 void PSO::cal_gradient(vec &theta, int &param_sel, costfunc &optfunc,
 					   vec &mgradient, uvec &matchId) {
-
+	/*
+	 * another implementation of numerical gradient
+	 *
+	 */
 	double eps = 1e-5;
 
 	// param_sel, of form: [0 0 .. 1 .. 0] (i.e. 1 specifies the parameter),
@@ -394,6 +406,10 @@ void PSO::cal_gradient(vec &theta, int &param_sel, costfunc &optfunc,
 
 int PSO::armijo(vec &theta, vec &g_k, uvec &matchId, double f_k,
 		   	    costfunc &optfunc, double &tk) {
+	/*
+	 * armijo line search
+	 *
+	 */
 
 	double alpha = 1;
 	double c0 = 0.25;
@@ -467,6 +483,7 @@ int PSO::wolfe(vec &theta, vec &g_k, uvec &matchId, uvec &param_sel, double f_k,
 			   costfunc &optfunc, double &tk, int maxiter) {
 	/*
 	 * find step length using strong wolfe condition
+	 *
 	 * */
 
 	vec p_k = -1*g_k;
@@ -505,7 +522,6 @@ int PSO::wolfe(vec &theta, vec &g_k, uvec &matchId, uvec &param_sel, double f_k,
 				alpha = min(t*alpha, (b+alpha)/2.);
 			}
 
-
 		}
 
 		else {
@@ -515,8 +531,6 @@ int PSO::wolfe(vec &theta, vec &g_k, uvec &matchId, uvec &param_sel, double f_k,
 
 	}
 
-//	tk = alpha;
-//	cout << alpha << endl;
 	return (maxiter);
 
 }
@@ -524,26 +538,15 @@ int PSO::wolfe(vec &theta, vec &g_k, uvec &matchId, uvec &param_sel, double f_k,
 
 int PSO::pso_optimise(costfunc &optfunc, vec &x0, int num_p, vec &bestp) {
 	/*
-	this is not the main optimisation method; merely used for testing
-	gradient descent + pso
+	 * this is not the main optimisation method; merely used for testing
+	 * gradient descent + pso
 	*/
 	int param_dim = x0.n_rows;
 	mat particles = zeros<mat>(param_dim, num_p);; // array of thetas
 	mat pvelocity = zeros<mat>(param_dim, num_p); // particle velocity
 	mat pbest_pos = zeros<mat>(param_dim, num_p); // best particle position
-
-//	vec rerand(param_dim); // for per generation re-randomisation
-//	vec bounds(4);
-//	bounds << 2.5 << 10 << 10 << 10 << endr;
-//	rerand.rows(0,5).fill(0.0);
-//	rerand.rows(6,9) = bounds;
-//	rerand.rows(10,13) = bounds;
-//	rerand.rows(14,17) = bounds;
-//	rerand.rows(18,21) = bounds;
-//	rerand.rows(22,25) = bounds;
-
 	vec gbest_pos = zeros<vec>(param_dim); // global best
-	vec pcost = zeros<vec>(num_p); // particle costs
+	vec pcost     = zeros<vec>(num_p); // particle costs
 
 
 	double gbest_cost = 1e100;
@@ -561,17 +564,13 @@ int PSO::pso_optimise(costfunc &optfunc, vec &x0, int num_p, vec &bestp) {
 			/* code */
 			gbest_cost = pcost(i);
 			gbest_pos = particles.col(i);
-
 		}
 
 	}
 
-
 	int iter = 1;
 	int count = 0;
 	int graditer = 10;
-
-
 
 	mat cost_evol = zeros<mat>(num_p, (this->maxiter-1)*graditer);
 	mat cost_ev2 = zeros<mat>(num_p, (this->maxiter-1));
@@ -604,28 +603,21 @@ int PSO::pso_optimise(costfunc &optfunc, vec &x0, int num_p, vec &bestp) {
 				    cal_corr = false;
 				}
 
-
 				double f_k = optfunc.cal_cost2(ctheta, matchId, cal_corr);
 
-//				cost_evol(i, (iter-2)*graditer+m) = f_k;
 
 				vec g_k;
 				cal_gradient(ctheta, permu(m), optfunc, g_k, matchId);
 
 				double tk = 0;
 
-				// goldstein line search
+				// goldstein line search; can be changed
 				goldstein(ctheta, g_k, matchId, f_k, optfunc, tk);
-
-//				armijo(ctheta, g_k, matchId, f_k, optfunc, tk);
-//				cout << c <<"--"<< tk << "--" << f_k << endl;
 
 				ctheta = ctheta - tk * g_k;
 
-
 				f_k = optfunc.cal_cost2(ctheta, matchId, cal_corr);
 
-//				cost_evol(i, (iter-2)*graditer+m) = f_k;
 
 				if (f_k < pcost(i)) {
 
@@ -634,14 +626,11 @@ int PSO::pso_optimise(costfunc &optfunc, vec &x0, int num_p, vec &bestp) {
 					pvelocity.col(i).fill(0.);
 
 				}
-
-
 			}
 
 			check_constraints(ctheta, cveloc);
 			particles.col(i) = ctheta;
 			pvelocity.col(i) = cveloc;
-
 
 		}
 
@@ -654,33 +643,23 @@ int PSO::pso_optimise(costfunc &optfunc, vec &x0, int num_p, vec &bestp) {
 			count = 0;
 		}
 
-
-//		vec rsu = 2*randu<vec>(num_p)-1;
-//		vec sel = randu<vec>(num_p);
-//		ivec id = randi<ivec>(num_p, distr_param(6,25));
 		mat rp = randu(param_dim, num_p);
 		mat rg = randu(param_dim, num_p);
 //
 //		#pragma omp parallel for
 		for (int i=0; i<num_p; i++) {
 
+			// add randomness
 //			if (count > 0 && sel.at(i) > 0.5) {
 //				int index = id.at(i);
 //				vec addrand = zeros<vec>(param_dim);
 //				addrand.at(index) = rsu.at(i) * rerand.at(index);
 //				particles.col(i) += addrand;
 //			}
-//
-////
+
 			pvelocity.col(i) = this->w*pvelocity.col(i) +
 							   this->c1*rp.col(i)%(pbest_pos.col(i)-particles.col(i)) +
 							   this->c2*rg.col(i)%(gbest_pos - particles.col(i));
-
-			// with constriction factor
-//			double thi = 0.7298437881283576;
-//			pvelocity.col(i) = thi * (pvelocity.col(i) +
-//							   2.8*rp.col(i)%(pbest_pos.col(i)-particles.col(i)) +
-//							   1.3*rg.col(i)%(gbest_pos - particles.col(i)));
 
 			particles.col(i) = particles.col(i) + pvelocity.col(i);
 
@@ -725,41 +704,7 @@ int PSO::pso_optimise(costfunc &optfunc, vec &x0, int num_p, vec &bestp) {
 
 	}
 
-//	cost_evol.save("icppso_wolfe_32p_20i_20s.dat", raw_ascii);
-//	cost_ev2.save("icppso_wolfe_32p_20g.dat", raw_ascii);
-//	mat d;
-//	d.load("frame0004_cost_cmp.dat", raw_ascii);
-//	int rng = d.n_cols;
-//	rowvec mf = min(cost_evol, 0);
-//	rowvec fv = zeros<rowvec>(rng);
-//	double fmn= 1e100;
-//	for (int j=0; j<rng; j++) {
-//		double fval = mf(j);
-//		if (fval < fmn) {
-//			fmn = fval;
-//		}
-//
-//		fv(j) = fmn;
-//
-//	}
-//	d.insert_rows(0, fv);
-//	rowvec psom = zeros<rowvec>(rng);
-//	for (int k=0; k<this->maxiter-1; k++) {
-//		int start = k*graditer;
-//		int end;
-//		if (k==this->maxiter-2) {
-//			end = (k+1)*graditer-2;
-//		}
-//		else {
-//			end = (k+1)*graditer-1;
-//		}
-//		psom(span(start, end)).fill(bcost_evo(k));
-//	}
-//	d.insert_rows(0, bcost_evo);
-//	d.save("frame0004_cost_cmp.dat", raw_ascii);
-
 	bestp = gbest_pos;
-//	cout << gbest_cost << "--best cost" << endl;
 
 	return (1);
 
@@ -800,7 +745,6 @@ int PSO::pso_evolve(costfunc &optfunc, vec &x0, int num_p, vec &bestp) {
 	generate_particles(particles, x0, num_p, false);
 //	init_velocity(particles, pvelocity, num_p);
 
-
 	#pragma omp parallel for
 	for (int i = 0; i < num_p; ++i) {
 		/* code */
@@ -829,8 +773,6 @@ int PSO::pso_evolve(costfunc &optfunc, vec &x0, int num_p, vec &bestp) {
 	double C1 = 0.5 + log(2);
 	double C2 = C1;
 
-
-
 	rowvec bcost_evo = zeros<rowvec>(this->maxiter-1);
 
 	while (iter < this->maxiter) {
@@ -857,11 +799,6 @@ int PSO::pso_evolve(costfunc &optfunc, vec &x0, int num_p, vec &bestp) {
 				}
 			}
 
-//			if (iter % 10 == 0) {
-//				restart(particles, pvelocity, pbest_pos, pcost, x0);
-//	//				cout << "re-init" << endl;
-//			}
-
 
 		}
 
@@ -869,23 +806,12 @@ int PSO::pso_evolve(costfunc &optfunc, vec &x0, int num_p, vec &bestp) {
 //		#pragma omp parallel for
 		for (int i = 0; i < num_p; i++) {
 
-
-//			double MIN = 1e100;
-//			int informant = 0;
-//			for (int s=0; s<num_p; s++) {
-//				if (L(s,i) == 1) {
-//					if (pcost.at(s) < MIN) {
-//						MIN = pcost(s);
-//						informant = s;
-//					}
-//				}
-//			}
-
 			uword ind;
 			uvec connection = find(L.col(i) == 1);
 			pcost.rows(connection).min(ind);
 			int informant = connection(ind);
 
+			// add randomness
 //			if ((count > 4)) {
 //				if (pcost(i) > min(pcost) + 0.5*(max(pcost)-min(pcost))) {
 //					int index = id(i);
@@ -894,7 +820,6 @@ int PSO::pso_evolve(costfunc &optfunc, vec &x0, int num_p, vec &bestp) {
 //					particles.col(i) += addrand;
 //				}
 //			}
-
 
 			if (informant == i) {
 				pvelocity.col(i) = W1*pvelocity.col(i) +
@@ -933,8 +858,6 @@ int PSO::pso_evolve(costfunc &optfunc, vec &x0, int num_p, vec &bestp) {
 				pbest_pos.col(i) = particles.col(i);
 
 			}
-
-
 		}
 
 
@@ -955,19 +878,8 @@ int PSO::pso_evolve(costfunc &optfunc, vec &x0, int num_p, vec &bestp) {
 		bcost_evo(iter-2) = gbest_cost;
 
 	}
-//
-//
-////	cout << gbest_cost << "--best cost" << endl;
-//	cost_evol.save("psolbest_32p_200i.dat", raw_ascii);
-	// bcost_evo.save("frame0004_cost_rand.dat", raw_ascii);
-//	mat d;
-//	d.load("frame0004_cost_cmp.dat", raw_ascii);
-//	d.insert_rows(0, bcost_evo);
-//	d.save("frame0004_cost_cmp.dat", raw_ascii);
-
 
 	bestp = gbest_pos;
-
 
 	return (1);
 

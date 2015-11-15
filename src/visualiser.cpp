@@ -37,8 +37,9 @@ GLdouble viewer[] = {0.0, 0.0, 20.0};
 string full_path;
 
 
-/* Initialize OpenGL Graphics */
+
 void initGL() {
+	/* Initialize OpenGL Graphics */
 
     GLfloat light0_position[] = {1,1,1,0};
     GLfloat light0_ambient_color[] = {0.25,0.25,0.25,1};
@@ -64,35 +65,34 @@ void initGL() {
 }
 
 
-/* Multiply two quaternions */
-/* Use Eq. A-79 on p. 806 of Hearn and Baker */
+
 void quaternion_multiply(float *out_q, float *q1, float *q2)
 {
+	/* Multiply two quaternions */
+	/* Use Eq. A-79 on p. 806 of Hearn and Baker */
 
     float q[4];
     int i;
 
     // s = s1*s2 - v1.v2
-
     q[0] = q1[0]*q2[0]-q1[1]*q2[1]-q1[2]*q2[2]-q1[3]*q2[3];
 
     // v = s1 v2 + s2 v2 + v1 x v2
-
     CROSS_PRODUCT(&q[1],&q1[1],&q2[1]);
 
     for(i=1;i<4;++i)
         q[i] += q1[0]*q2[i]+q2[0]*q1[i];
 
     // copy result to output vector
-
     for(i=0;i<4;++i)
         out_q[i] = q[i];
 }
 
-/* Use Eq. 5-107 on p. 273 of Hearn and Baker */
-/* be aware that OpenGL uses transpose of the matrix */
+
 void quaternion_to_matrix(float q[4], float M[4][4])
 {
+	/* Use Eq. 5-107 on p. 273 of Hearn and Baker */
+	/* be aware that OpenGL uses transpose of the matrix */
     float a,b,c,s;
 
     s = q[0];
@@ -117,10 +117,11 @@ void quaternion_to_matrix(float q[4], float M[4][4])
     M[3][3] = 1.0;
 }
 
-/* due to accumulating round-off error, it may be necessary to normalize */
-/* this will ensure that the quaternion is truly unit */
+
 void quaternion_normalize(float q[4])
 {
+	/* due to accumulating round-off error, it may be necessary to normalize */
+	/* this will ensure that the quaternion is truly unit */
     float mag=0;
     int i;
 
@@ -134,10 +135,11 @@ void quaternion_normalize(float q[4])
             q[i] /= mag;
 }
 
-/* Handler for window-repaint event. Called back when the window first appears and
-	whenever the window needs to be re-painted. */
-void display_mainwindow() {
 
+void display_mainwindow() {
+	/* Handler for window-repaint event. Called back when
+	 * the window first appears and
+		whenever the window needs to be re-painted. */
     int numwires = 10;
 
 	float M[4][4];
@@ -148,11 +150,9 @@ void display_mainwindow() {
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
-    // 
 	quaternion_to_matrix(viewing_quaternion,M);
 	glMultMatrixf(&M[0][0]);
 
-    // spheres & h_radii are global
 
 	int num_spheres = spheres.n_rows; // spheres.shape = (48,3)
 
@@ -211,9 +211,7 @@ void display_mainwindow() {
     }
     glEnd();
 
-
 	glFlush();
-
 
 	glutSwapBuffers();  // Swap the front and back frame buffers (double buffering)
 
@@ -279,8 +277,7 @@ void update_frame() {
         optimiser_pointer->refine_init_pose(x0, *optfunc_pointer);
 
         vec bestp = zeros<vec>(26);
-    //      optimiser.pso_optimise(optfunc, x0, num_p, bestp);
-//        optimiser_pointer->pso_optimise(*optfunc_pointer, x0, num_p, bestp);
+
         optimiser_pointer->pso_evolve(*optfunc_pointer, x0, num_p, bestp);
 
         double c = optfunc_pointer->cal_cost(bestp);
@@ -293,25 +290,17 @@ void update_frame() {
 
     	glutPostRedisplay(); // Post re-paint request to activate display()
 
-    	// saving visualisation as a jpg file
-//    	cv::Mat img(480, 640, CV_8UC3);
-//		glPixelStorei(GL_PACK_ALIGNMENT, (img.step & 3) ? 1 : 4);
-//		glReadPixels(0, 0, img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
-//
-//		string save_fname = "pose" + next_frame_num + ".jpg";
-//		cv::Mat flipped(480, 640, CV_8UC3);
-//		cv::flip(img, flipped, 0);
-//		cv::imwrite(save_fname, flipped);
-
     }
 
 
 }
 
-/* This is the keyboard callback function. Keys change the viewer's position as well as turn
-   rotation on and off. */
+
 void keys(unsigned char key, int x, int y)
 {
+	/* This is the keyboard callback function. Keys change the viewer's
+	 * position as well as turn rotation on and off.
+	 */
    if(key == 'x') viewer[0]-= 1.0;
    if(key == 'X') viewer[0]+= 1.0;
    if(key == 'y') viewer[1]-= 1.0;
@@ -338,9 +327,10 @@ void mouseButton(int button, int state, int x, int y)
     }
 }
 
-/* mouse motion callback */
+
 void mouseMotion(int x, int y)
 {
+	/* mouse motion callback */
     float dx,dy;
     float rotation_axis[3], mag, q[4];
     float viewing_delta = PI/360.0;  /* 0.5 degrees */
@@ -384,14 +374,15 @@ void mouseMotion(int x, int y)
 }
 
 
-/* Handler for window re-size event. Called back when the window first appears and
-	whenever the window is re-sized with its new width and height */
-void reshape_mainwindow(GLsizei width, GLsizei height) {  
 
+void reshape_mainwindow(GLsizei width, GLsizei height) {  
+	/* Handler for window re-size event. Called back
+	 * when the window first appears and
+		whenever the window is re-sized with its new width and height */
     double ratio;
 
     /* Prevent a divide by zero, when window is too short
-    	(you cant make a window of zero width). */
+     * (you cant make a window of zero width). */
     if(height == 0) height = 1;
 
     ratio = 1.0f * width / height;
@@ -431,8 +422,8 @@ void gl_visualise() {
 
 	// initial pose
 	x0 << 0 << -10 << -40 << 0 << 3 << 32 << 6 << 9 << 8 << 9 << 3 << 9
-	   << 9 << 6 << 1  << 9  << 8 << 7 << 4 << 8 << 7 << 6 << 2
-	   << 7 << 7 << 7  << endr; // initial pose
+	   << 9 << 6   << 1   << 9 << 8 << 7  << 4 << 8 << 7 << 6 << 2
+	   << 7 << 7   << 7   << endr; // initial pose
 
 	// load hand geometry
 	string handparam_path = "misc";

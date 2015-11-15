@@ -18,14 +18,15 @@ observedmodel::observedmodel() {
 	/*
 	 * default constructor;
 	 *
-	 * initialise the directories where the data reside
 	 * */
+
+	// set default test data directory
 	string home = "../";
 	string pdir = "handModelling/Release_2014_5_28/Subject1/";
-
 	path = home + pdir;
 	filename = "000001_depth.bin";
 
+	// set camera parameters; given by test set
 	imgW = 240;
 	imgH = 320;
 	scale = 1.0;
@@ -39,8 +40,12 @@ observedmodel::observedmodel() {
 }
 
 void observedmodel::init_observation(string dpath, string dfname, bool mm_to_cm,
-									int imW, int imH, double foclen,
-									bool downsampling) {
+									 int imW, int imH, double foclen,
+									 bool downsampling) {
+	/*
+	 * initialise the observed model; updating the default parameters
+	 *
+	 */
 	// for the .bin files: imW = 240, imH = 320
 	this->path = dpath;
 	this->filename = dfname;
@@ -59,7 +64,11 @@ void observedmodel::init_observation(string dpath, string dfname, bool mm_to_cm,
 }
 
 void observedmodel::get_observed() {
-
+	/*
+	 * project the depth map onto 3D forming a point cloud
+	 *
+	 * computes the distance transform of the inversed depth map
+	 */
 	depth_to_ptncloud(this->pointcld);
 	dist_transform(this->disttran);
 
@@ -86,6 +95,10 @@ void observedmodel::set_path(string newdir) {
 }
 
 void observedmodel::show_depthmap() {
+	/*
+	 * show the current depth map using OpenCV
+	 *
+	 */
     cv::Mat opencv_mat(this->imgH, this->imgW,
     					CV_64FC1, this->depthmap.memptr());
     cv::Mat cv_depth(opencv_mat.t());
@@ -96,6 +109,8 @@ void observedmodel::show_depthmap() {
 
 void observedmodel::depth_to_ptncloud(mat &ptncloud) {
 	/*
+	 * output: ptncloud == point cloud from depth
+	 *
 	 * solving the following camera transformation:
 	 *
 	 * const*[u,v,1].T = K*[X,Y,Z].T; where:
@@ -111,12 +126,6 @@ void observedmodel::depth_to_ptncloud(mat &ptncloud) {
 	 *
 	 * */
 
-//	 load_data();
-
-//	 cout << this->depthmap.n_rows << endl;
-//	 cout << this->depthmap.n_cols << endl;
-//	int MM_PER_CM = 10; // conversion from mm to cm
-
 	// initialise some containers
 	vec x = linspace(0, this->imgW-1, this->imgW);
 	vec y = linspace(0, this->imgH-1, this->imgH);
@@ -127,19 +136,12 @@ void observedmodel::depth_to_ptncloud(mat &ptncloud) {
 	// now solve for X and Y; 
 	// note: if depth(u,v) == 0 ==> X = Y = Z = 0;
 	// such points do not need to be considered in the cost function
-
 	ugrid = u*y.t() - this->img_center(0);
 	vgrid = x*v.t() - this->img_center(1);
 
 	ugrid = ugrid % this->depthmap / this->focal_len; // % <==> .*
 	vgrid = vgrid % this->depthmap / this->focal_len;
 	wgrid = this->depthmap;
-
-
-
-	//	ugrid.save("ugrid.dat", raw_ascii); // output data to numpy
-	//	vgrid.save("vgrid.dat", raw_ascii); // use: np.loadtxt("name", dtype=float)
-	//	wgrid.save("wgrid.dat", raw_ascii);
 
 
 	// reshape the result and put them in one container
@@ -158,19 +160,6 @@ void observedmodel::depth_to_ptncloud(mat &ptncloud) {
 	ptncloud.col(1) = vgrid(nonzero_index) * -1;
 	ptncloud.col(2) = wgrid(nonzero_index) * -1;
 
-
-//	uvec rows;
-//	downsample_ptncloud(rows);
-//	mat conptns = zeros<mat>(rows.n_rows, 3);
-//	conptns.col(0) = ugrid(rows);
-//	conptns.col(1) = vgrid(rows) * -1;
-//	conptns.col(2) = wgrid(rows) * -1;
-
-//	conptns.save("conptns.dat", raw_ascii);
-
-//	ptncloud.save("ptncloud.dat", raw_ascii); // output data to matlab
-
-
 	/*
 	 * compute the pixel scale of the depth map (i.e. how does pixel distance
 	 * translates to real world distance.
@@ -179,19 +168,22 @@ void observedmodel::depth_to_ptncloud(mat &ptncloud) {
 	 * pixels (i.e. two neighbouring points in ptncloud)
 	 *
 	 * */
-	double rad = 2.0;
-	mat cens = zeros<mat>(nonzero_index.n_rows, 3);
+	double rad  = 2.0;
+	mat cens    = zeros<mat>(nonzero_index.n_rows, 3);
 	cens.col(0) = ugrid(nonzero_index);
 	cens.col(1) = vgrid(nonzero_index);
 	cens.col(2) = wgrid(nonzero_index);
 
-	mat edgs = zeros<mat>(nonzero_index.n_rows, 3);
+	mat edgs    = zeros<mat>(nonzero_index.n_rows, 3);
 	edgs.col(0) = ugrid(nonzero_index) + rad;
 	edgs.col(1) = vgrid(nonzero_index);
 	edgs.col(2) = wgrid(nonzero_index);
 
-	mat projection, cprojected, eprojected;
-	rowvec dist_norm2, cmPerPixel;
+	mat projection;
+	mat cprojected;
+	mat eprojected;
+	rowvec dist_norm2;
+	rowvec cmPerPixel;
 	projection = this->camera_calibration * cens.t();
 	cprojected = projection.rows(0,1) / repmat(projection.row(2),2,1);
 	cprojected = floor(cprojected);
@@ -205,17 +197,9 @@ void observedmodel::depth_to_ptncloud(mat &ptncloud) {
 
 
 	uvec nonzeroId = find(dist_norm2);
-	cmPerPixel = rad / dist_norm2.cols(nonzeroId);
+	cmPerPixel     = rad / dist_norm2.cols(nonzeroId);
 
 	this->scale = arma::mean(cmPerPixel);
-
-//	int num_nonzero = ptncloud.n_rows;
-//	mat ptndist = ptncloud.rows(0,num_nonzero-2) - ptncloud.rows(1,num_nonzero-1);
-//	vec disnorm = sqrt(square(ptndist.col(0))+
-//					   square(ptndist.col(1))+
-//					   square(ptndist.col(2)));
-//	this->scale = sum(disnorm) / disnorm.n_rows;
-
 
 	if (this->downsample) {
 		/*
@@ -230,27 +214,24 @@ void observedmodel::depth_to_ptncloud(mat &ptncloud) {
 
 		ptncloud = ptncloud.rows(sample_idx);
 
-//		ptncloud = join_cols(ptncloud, conptns);
-//		ptncloud = conptns;
-//		ptncloud.save("dptncloud.dat", raw_ascii);
 	}
-
-
 
 }
 
 void observedmodel::downsample_ptncloud(uvec &rows_id) {
-
+	/*
+	 * output: rows_id = the index of points which are selected
+	 *
+	 * alternative point cloud down sampling function
+	 * i.e. implement contour only down-sampling
+	 */
 	mat dmap = this->depthmap;
 	uvec nonzeros = find(dmap!=0); // find all nonzero elements
 	dmap(nonzeros).fill(1);
 
-//	dmap.save("dmap.dat", raw_ascii);
-
 	cv::Mat cvdepthmp(dmap.n_cols, dmap.n_rows, CV_64F, dmap.memptr());
 	cvdepthmp = cvdepthmp.t();
 	cvdepthmp.convertTo(cvdepthmp, CV_8UC1);
-
 
 	vector<vector<cv::Point> > contours;
 	vector<cv::Vec4i> hierarchy;
@@ -270,30 +251,29 @@ void observedmodel::downsample_ptncloud(uvec &rows_id) {
 		rows_id(i) = 320*(contour_ptns[i*increment].y) + contour_ptns[i*increment].x;
 	}
 
-
 	bool PLOT = false;
 	if (PLOT) {
 
-		/// Draw contours
+		// Draw contours
 		cv::Mat drawing = cv::Mat::zeros(cvdepthmp.size(), CV_8UC3 );
 		for(uint i = 0; i< contours.size(); i++ ) {
 		   cv::Scalar color = cv::Scalar(0,255,0);
 		   cv::drawContours( drawing, contours, i, color, 1, 8, hierarchy, 0, cv::Point() );
 		}
 
-		/// Show in a window
+		// Show in a window
 		cv::namedWindow( "Contours", CV_WINDOW_AUTOSIZE );
 		cv::imshow( "Contours", drawing );
 		cv::waitKey(0);
 	}
 
-
-
-
 }
 
 void observedmodel::load_data() {
-
+	/*
+	 * load the .bin files (i.e. the depth maps)
+	 *
+	 */
 	string full = this->path + this->filename;
 
 	// get the filesize and create a buffer to store the data
@@ -327,7 +307,6 @@ void observedmodel::load_data() {
 
     this->depthmap = depth.t(); // (240, 320)
 
-//    this->depthmap.save("depth.dat", raw_ascii); // output data to matlab
 }
 
 
@@ -371,16 +350,21 @@ void observedmodel::dist_transform(mat &dist_trans) {
 	cv::Mat cvdist;
 	cv::distanceTransform(cvdepthmp, cvdist, CV_DIST_L2, 5);
 
-//	cv::namedWindow("disttrans", cv::WINDOW_AUTOSIZE ); // Create a window for display.
-//	cv::imshow("disttrans", cvdist); // Show our image inside it.
-//	cv::waitKey(0);
+
 
 	fmat dist(cvdist.ptr<float>(), cvdist.cols, cvdist.rows);
 	dist = dist.t();
 
 	dist_trans = conv_to<mat>::from(dist);
-//	dist_trans.save("dist_trans.dat", raw_ascii);
-//	show_depthmap();
+
+	bool debug = false;
+	if (debug) {
+		cv::namedWindow("disttrans", cv::WINDOW_AUTOSIZE ); // Create a window for display.
+		cv::imshow("disttrans", cvdist); // Show our image inside it.
+		cv::waitKey(0);
+		dist_trans.save("dist_trans.dat", raw_ascii);
+		show_depthmap();
+	}
 
 }
 
@@ -434,8 +418,13 @@ int observedmodel::get_imgW() const {
 
 
 observedmodel& observedmodel::next_frame(string next) {
+	/*
+	 * update the oberserved model
+	 *
+	 */
 	set_filename(next);
 	load_data();
 	get_observed();
 	return (*this);
+
 }

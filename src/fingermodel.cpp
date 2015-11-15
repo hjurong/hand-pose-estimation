@@ -11,6 +11,9 @@ const static double PI = acos(-1);
 constructor
 */
 fingermodel::fingermodel() {
+	/*
+	 * initialise default parameters
+	 */
 	this->spacing = 0.0;
 	this->CMC = 0.0;
 	this->T01.fill(0.0);
@@ -29,8 +32,7 @@ void fingermodel::init(double tCMC, vec finger_geo, float dis2gpos,
 	set_CMC(tCMC);
 	set_f_geometry(finger_geo);
 
-	// also sets the size of mat-->spheres_pos
-	// and vec --> sphere_radius
+	// also sets the size of mat-->spheres_pos and vec --> sphere_radius
 	set_num_spheres(numSpheres);
 
 }
@@ -48,10 +50,6 @@ void fingermodel::set_CMC(double tCMC) {
 	this->setCMCTrans = true;
 }
 
-
-// void fingermodel::set_sphere_radius(vec sradius) {
-// 	sphere_radius = sradius;
-// }
 
 void fingermodel::set_num_spheres(vec numSpheres) {
 	this->num_spheres = numSpheres;
@@ -71,8 +69,17 @@ void fingermodel::set_f_geometry(vec finger_geo) {
 
 void fingermodel::set_transform_mat(mat &T12, mat &T23, mat &T34, 
 						   			mat &T45, mat &T00, mat &Tgb, 
-						   			vec &f_geometry, vec &gb_trans, 
-						   			vec &g_pos, vec &theta) {
+						   			vec &f_geometry,
+									vec &gb_trans,
+						   			vec &g_pos,
+									vec &theta) {
+	/* inputs: arma::vec
+	 * outputs: aram::mat
+	 *
+	 * set transformation matrices according to the DH convention
+	 *
+	 * refer to Chapter 3 of the book "Robot Modeling and Control"
+	 */
 
 	double MCP1, MCP2, PIP, DIP;
 	MCP1 = deg2rad(theta(0));
@@ -99,27 +106,22 @@ void fingermodel::set_transform_mat(mat &T12, mat &T23, mat &T34,
 	if (this->setCMCTrans) {
 		double nCMC = deg2rad(this->CMC);
 		/* code 
-		CMC is fixed; thus its transformation does not need to be 
-		updated everytime
-		*/
+		 * CMC is fixed; thus its transformation does not need to be
+		 * updated every time
+		 */
 		this->T01 << cos(nCMC) << -sin(nCMC) << 0 << L4*cos(nCMC) << endr
 				  << sin(nCMC) <<  cos(nCMC) << 0 << L4*sin(nCMC) << endr
 				  << 		 0 << 		   0 << 1 << 		    0 << endr
 				  << 		 0 << 		   0 << 0 <<		    1 << endr;
 
 		/*
-		T01 is the reverse of T01 so that the spheres on the 
-		palm can be generated properly
-		trigonomatry is used to enasure that the distance between 
-		every two neighbouring spheres == spacing
-		*/
+		 * T01 is the reverse of T01 so that the spheres on the
+		 * palm can be generated properly
+		 * trigonomatry is used to enasure that the distance between
+		 * every two neighbouring spheres == spacing
+		 */
 		double a = sqrt(L4*L4+spacing*spacing-2*L4*spacing*cos(nCMC));
 		double beta = asin(sin(nCMC)*spacing/a); // rotation angle
-
-//		cout << a <<"-a-"<< L4 <<"-L4-" << spacing<<"-sp-" << nCMC << "--cmc"<< endl;
-//		cout << f_geometry << endl;
-//		cout << theta << "--theta--" << endl;
-//		cout << beta << "--beta, in fingermodel; set_transform"<< endl;
 
 		this->T10 << cos(beta) << -sin(beta) << 0 << -L4*sin(nCMC)*cos(beta) << endr
 			      << sin(beta) <<  cos(beta) << 0 << -L4*sin(nCMC)*sin(beta) << endr
@@ -129,7 +131,9 @@ void fingermodel::set_transform_mat(mat &T12, mat &T23, mat &T34,
 		this->setCMCTrans = false; // no need to set CMC transformation matrix again
 	}
 
-
+	/*
+	 * start setting the transformation matrices between finger joints
+	 */
 	T12 << cos(MCP1) <<  0 << -sin(MCP1) << 0 << endr
 		<< sin(MCP1) <<  0 <<  cos(MCP1) << 0 << endr
 		<<		   0 << -1 << 		   0 << 0 << endr
@@ -173,19 +177,7 @@ void fingermodel::set_transform_mat(mat &T12, mat &T23, mat &T34,
 	   << 0 << sin(ROT) <<  cos(ROT) << 0 << endr
 	   << 0 << 		  0 << 		   0 << 1 << endr;
 
-	Tgb = Rz * Ry * Rx;
-
-//	Tgb << cos(TWS) << -sin(TWS)*cos(JNT) << sin(TWS)*sin(JNT) << 0 << endr
-//		<< sin(TWS) <<  cos(TWS)*cos(JNT) <<-cos(TWS)*sin(JNT) << 0 << endr
-//		<<		   0 << 		 sin(JNT) << 		  cos(JNT) << 0 << endr
-//		<< 		   0 <<  				0 <<	   		     0 << 1 << endr;
-
-
-//	// debug print
-//	mat::fixed<4,4> test[8] = {T00, T01, T10, T12, T23, T34, T45, Tgb};
-//	for (int i = 0; i<8; ++i) {
-//		test[i].print("\nMAT: ");
-//	}
+	Tgb = Rz * Ry * Rx; // compute overall rotation matrix
 
 }
 
@@ -214,6 +206,13 @@ double fingermodel::deg2rad(double angle_deg) {
 
 
 void fingermodel::buildSpheres(mat &joints, mat &spheres_pos) {
+	/* input: hand joints computed from DH transformations
+	 * output: hand model sphere centres
+	 *
+	 * fit spheres between two adjacent joints; the number of spheres between
+	 * joints is predefined
+	 *
+	 */
 	
 	int num_joints = 5; // number of joints; recall size(joint_pos) = fixed::<5,3>
 	int numSpheres = 0;
@@ -223,8 +222,8 @@ void fingermodel::buildSpheres(mat &joints, mat &spheres_pos) {
 
 	for (int i = 0; i < num_joints-1; ++i) {
 		/* code 
-		5 joints ==> 4 segments/parts
-		*/
+		 * 5 joints ==> 4 segments/parts
+		 */
 
 		rowvec::fixed<3> joint1 = joints.row(i);
 		rowvec::fixed<3> joint2 = joints.row(i+1);
@@ -235,13 +234,13 @@ void fingermodel::buildSpheres(mat &joints, mat &spheres_pos) {
 
 			for (int j = 0; j < numSpheres; ++j) {
 				/* code
-				num_spheres(vec): specifies the number of spheres in
-				each finger segment
-
-				radii of spheres in one finger segment are equal
-
-				int-j must start at 1 to ensure int-mapping starts at 1
-				*/
+				 * num_spheres(vec): specifies the number of spheres in
+				 * each finger segment
+				 *
+				 * radii of spheres in one finger segment are equal
+				 *
+				 * int-j must start at 1 to ensure int-mapping starts at 1
+				 */
 
 				sph_cen = (1.-t*j)*joint1 + t*j*joint2;
 				spheres_pos.row(cnt) = sph_cen;
@@ -255,13 +254,6 @@ void fingermodel::buildSpheres(mat &joints, mat &spheres_pos) {
 			t = 1./(this->num_spheres(i));
 
 			for (int j = 1; j < numSpheres; ++j) {
-				/* code
-				num_spheres(vec): specifies the number of spheres in each finger segment
-
-				radii of spheres in one finger segment are equal
-
-				int-j must start at 1 to ensure int-mapping starts at 1
-				*/
 
 				sph_cen = (1.-t*j)*joint1 + t*j*joint2;
 				spheres_pos.row(cnt) = sph_cen;
@@ -276,26 +268,31 @@ void fingermodel::buildSpheres(mat &joints, mat &spheres_pos) {
 
 
 void fingermodel::build_finger_model(vec &f_theta, vec &gb_trans, 
-									 vec &g_pos, mat &sphere_centres) {
-	//	cout << T01 << T12 << endl;
-	mat::fixed<4,4> T12, T23, T34, T45, T00, Tgb;
+									 vec &g_pos,
+									 mat &sphere_centres) {
+	/* inputs: arma::vec
+	 * output: arma::mat
+	 *
+	 * compute finger joint positions from given joint angles using DH transform;
+	 * then fit spheres between the joints and output the spheres model.
+	 *
+	 * store the compute joints
+	 *
+	 */
 
+	mat::fixed<4,4> T12, T23, T34, T45, T00, Tgb; // DH transform matrices
 	set_transform_mat(T12, T23, T34, T45, T00, Tgb, this->f_geometry, 
 					  gb_trans, g_pos, f_theta);
 
 	mat::fixed<4,4> T123 = T12 * T23; // T12 and T23 combine to give the next ptn
 	mat::fixed<4,4> *T_mat_pointers[4] = {&T01, &T123, &T34, &T45};
-
 	mat::fixed<4,4> current_pos = T00*Tgb;
-
 	mat::fixed<5,3> joint_pos;
 	
 	for (int i = 0; i < 4; ++i) {
-		/* code */
-//		// debug print
-//		cout << T_mat[i] << endl;
-//		current_pos.print("current pos: ");
-//		temp0.print("temp: ");
+		/* code
+		 * compute the joint positions
+		 * */
 
 		if (i == 1) {
 			/* code */
@@ -313,7 +310,7 @@ void fingermodel::build_finger_model(vec &f_theta, vec &gb_trans,
 		joint_pos.row(i+1) = temp.rows(0,2).t();
 	}
 
-	this->finger_joints = joint_pos;
+	this->finger_joints = joint_pos; // store the computed joints
 
 	buildSpheres(joint_pos, sphere_centres);
 
