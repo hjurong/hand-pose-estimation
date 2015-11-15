@@ -4,7 +4,7 @@ hand pose estimation system based on [Qian et al., 2014]. This system is impleme
 
 #DEPENDENCIES:
 1. MinGW (g++ 4.8.0)
-2. OpenCV
+2. OpenCV 3.0
 3. Armadillo (with OpenBLAS)
 4. OpenGL
 
