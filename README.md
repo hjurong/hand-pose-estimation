@@ -1,5 +1,5 @@
 # hand-pose-estimation
-hand pose estimation system based on [Qian et al., 2014]. This system is implemented in Windows; however, it can also be compiled in Linux.
+hand pose estimation system based on [Qian et al., 2014](http://www.google.com.au/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&ved=0CCEQFjAAahUKEwiOhKqHhZTJAhVkKqYKHSkVAuE&url=http%3A%2F%2Fresearch.microsoft.com%2Fen-US%2Fpeople%2Fyichenw%2Fcvpr14_handtracking.pdf&usg=AFQjCNH1T1513mdzrW9SM363UUg7ZqnJXg&bvm=bv.107467506,d.dGY). which uses single depth maps. This system is implemented in Windows; however, it can also be compiled in Linux.
 
 
 #DEPENDENCIES:
